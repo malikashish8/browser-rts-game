@@ -45,6 +45,19 @@ const RESOURCE_INCOME_PER_VILLAGER: Record<string, Resources> = {
   gold: { food: 0, wood: 0, gold: 0.5 },
 }
 
+function getUnitRadius(unit: Unit): number {
+  switch (unit.type) {
+    case 'horseman':
+      return 14
+    case 'spearman':
+    case 'archer':
+      return 9
+    case 'villager':
+    default:
+      return 8
+  }
+}
+
 function cloneResources(r: Resources): Resources {
   return { food: r.food, wood: r.wood, gold: r.gold }
 }
@@ -178,7 +191,7 @@ function createSpawningSystem(): SpawningSystem {
           spawnUnit(
             'player',
             'spearman',
-            { x: center.x - 40 + i * 20, y: center.y },
+            { x: center.x - 60 + i * 30, y: center.y },
             (idSeed += 1),
           ),
         )
@@ -188,7 +201,7 @@ function createSpawningSystem(): SpawningSystem {
           spawnUnit(
             'player',
             'archer',
-            { x: center.x - 40 + i * 20, y: center.y + 40 },
+            { x: center.x - 60 + i * 30, y: center.y + 40 },
             (idSeed += 1),
           ),
         )
@@ -204,7 +217,35 @@ function createSpawningSystem(): SpawningSystem {
         )
       }
 
-      next.units.push(...playerUnits)
+      // Simple enemy army mirrored on the right side of the map.
+      const enemyCenter: Vec2 = {
+        x: next.world.width * 0.7,
+        y: next.world.height * 0.4,
+      }
+      const enemyUnits: Unit[] = []
+
+      for (let i = 0; i < 2; i += 1) {
+        enemyUnits.push(
+          spawnUnit(
+            'ai',
+            'spearman',
+            { x: enemyCenter.x - 30 + i * 30, y: enemyCenter.y },
+            (idSeed += 1),
+          ),
+        )
+      }
+      for (let i = 0; i < 2; i += 1) {
+        enemyUnits.push(
+          spawnUnit(
+            'ai',
+            'archer',
+            { x: enemyCenter.x - 30 + i * 30, y: enemyCenter.y + 40 },
+            (idSeed += 1),
+          ),
+        )
+      }
+
+      next.units.push(...playerUnits, ...enemyUnits)
       return next
     },
   }
@@ -236,8 +277,46 @@ function createMovementSystem(): MovementSystem {
         const step = Math.min(maxStep, distance)
         const nx = unit.position.x + (dx / distance) * step
         const ny = unit.position.y + (dy / distance) * step
-        unit.position.x = nx
-        unit.position.y = ny
+
+        // Simple collision avoidance: prevent units from entering each
+        // other's personal space. We check against the original state
+        // positions so this remains deterministic.
+        const radius = getUnitRadius(unit)
+        let blocked = false
+        const epsilon = 1e-6
+
+        for (const other of state.units) {
+          if (other.id === unit.id) continue
+
+          const sumRadius = radius + getUnitRadius(other)
+          const cdx = unit.position.x - other.position.x
+          const cdy = unit.position.y - other.position.y
+          const currentDist = Math.hypot(cdx, cdy)
+          const odx = nx - other.position.x
+          const ody = ny - other.position.y
+          const nextDist = Math.hypot(odx, ody)
+
+          // If we're not overlapping now, don't step into overlap.
+          if (currentDist >= sumRadius && nextDist < sumRadius) {
+            blocked = true
+            break
+          }
+
+          // If we're already overlapping (e.g. spawned close), allow moves that
+          // increase separation, so units can "unstick" themselves over time.
+          if (currentDist < sumRadius && nextDist <= currentDist + epsilon) {
+            blocked = true
+            break
+          }
+        }
+
+        if (!blocked) {
+          unit.position.x = nx
+          unit.position.y = ny
+        } else {
+          // Stay in place this frame; unit will keep trying to reach
+          // its target but won't overlap others.
+        }
       }
 
       return next
@@ -248,14 +327,42 @@ function createMovementSystem(): MovementSystem {
 function createCombatSystem(): CombatSystem {
   return {
     update(state: GameState, dtSeconds: number): GameState {
-      // Simple placeholder that only decrements attackCooldown timers for now.
       const next = structuredClone(state) as GameState
+
+      const damagePerAttack = 8
+      const attackCooldownSeconds = 1
 
       for (const unit of next.units) {
         if (unit.attackCooldown > 0) {
           unit.attackCooldown = Math.max(0, unit.attackCooldown - dtSeconds)
+          continue
+        }
+
+        const enemies = next.units.filter((u) => u.ownerId !== unit.ownerId)
+        let closest: Unit | null = null
+        let closestDist = Number.POSITIVE_INFINITY
+
+        for (const enemy of enemies) {
+          const dx = enemy.position.x - unit.position.x
+          const dy = enemy.position.y - unit.position.y
+          const dist = Math.hypot(dx, dy)
+          if (dist < closestDist) {
+            closestDist = dist
+            closest = enemy
+          }
+        }
+
+        if (!closest) continue
+
+        if (closestDist <= unit.range) {
+          const effectiveDamage = Math.max(1, damagePerAttack - closest.armor)
+          closest.hp -= effectiveDamage
+          unit.attackCooldown = attackCooldownSeconds
         }
       }
+
+      // Remove dead units.
+      next.units = next.units.filter((u) => u.hp > 0)
 
       return next
     },

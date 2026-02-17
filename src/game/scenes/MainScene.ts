@@ -9,6 +9,9 @@ export class MainScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Prevent the browser context menu on right-click over the canvas.
+    this.input.mouse?.disableContextMenu()
+
     this.gameClient = new GameClient(this)
     this.gameClient.init()
   }

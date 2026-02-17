@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { GameState, Unit } from '../core/GameState.ts'
+import { playAttackSound } from '../../audio/sfx.ts'
 
 type UnitVisualState = 'idle' | 'moving' | 'attacking'
 
@@ -10,6 +11,7 @@ interface UnitView {
   weapon: Phaser.GameObjects.Rectangle
   lastX: number
   lastY: number
+  lastState: UnitVisualState
 }
 
 /**
@@ -61,7 +63,12 @@ export class UnitRenderer {
     const body = this.scene.add.rectangle(0, 0, bodyWidth, bodyHeight, baseColor)
     body.setOrigin(0.5, 0.9)
 
-    const head = this.scene.add.circle(0, -bodyHeight * 0.8, 6, 0xfacc15)
+    const head = this.scene.add.circle(
+      0,
+      -bodyHeight * 0.8,
+      6,
+      this.getHeadColor(unit),
+    )
 
     const weaponLength =
       unit.type === 'archer'
@@ -92,6 +99,7 @@ export class UnitRenderer {
       weapon,
       lastX: unit.position.x,
       lastY: unit.position.y,
+      lastState: 'idle',
     }
   }
 
@@ -127,6 +135,12 @@ export class UnitRenderer {
       weapon.setAngle(-60)
       body.setFillStyle(0xef4444)
     }
+
+    if (state === 'attacking' && view.lastState !== 'attacking') {
+      playAttackSound()
+    }
+
+    view.lastState = state
   }
 
   private deriveVisualState(unit: Unit, movedDistance: number): UnitVisualState {
@@ -158,6 +172,11 @@ export class UnitRenderer {
     if (unit.type === 'archer') return 0xfacc15
     if (unit.type === 'horseman') return 0xef4444
     return 0x9ca3af
+  }
+
+  private getHeadColor(unit: Unit): number {
+    // Player units: gold heads, enemy units: red heads.
+    return unit.ownerId === 'player' ? 0xfacc15 : 0xef4444
   }
 }
 
