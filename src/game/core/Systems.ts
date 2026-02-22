@@ -72,25 +72,14 @@ function createResourceSystem(): ResourceSystem {
         for (const villager of next.units) {
           if (villager.type !== 'villager' || villager.ownerId !== playerId) continue
 
-          // ── Auto-assign: if unassigned & idle near a node, start gathering it ──
+          // ── Auto-assign: if unassigned AND idle near a resource node, start gathering.
+          //    Only idle villagers get auto-assigned so player-issued move orders
+          //    aren't overridden (issueMoveCommand clears resourceAssignment). ──
           if (!villager.resourceAssignment && villager.currentOrder.type === 'idle') {
             for (const node of next.resourceNodes) {
               if (node.amount <= 0) continue
               const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
               if (d <= GATHER_RANGE) {
-                villager.resourceAssignment = node.type
-                villager.gatherTargetNodeId = node.id
-                break
-              }
-            }
-          }
-
-          // Auto-assign if stuck/blocked (has move order but VERY close to a resource)
-          if (!villager.resourceAssignment && villager.currentOrder.type === 'move') {
-            for (const node of next.resourceNodes) {
-              if (node.amount <= 0) continue
-              const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
-              if (d <= 40) {  // Only if extremely close (indicates blocked/stuck)
                 villager.resourceAssignment = node.type
                 villager.gatherTargetNodeId = node.id
                 break
@@ -124,11 +113,15 @@ function createResourceSystem(): ResourceSystem {
           )
 
           if (dist <= GATHER_RANGE) {
-            // At the node — gather.
+            // Within range — gather resources regardless of movement state.
+            // This means even a villager blocked behind others will still produce income.
             const income = RESOURCE_INCOME_PER_VILLAGER[resType]
             playerState.resources = addResources(playerState.resources, income, dtSeconds)
             targetNode.amount = Math.max(0, targetNode.amount - (income.food + income.wood + income.gold) * dtSeconds)
-            villager.currentOrder = { type: 'idle' }
+            // Stop moving if close enough to just gather
+            if (villager.currentOrder.type === 'move') {
+              villager.currentOrder = { type: 'idle' }
+            }
           } else {
             // Walk to the node if not already heading there.
             const alreadyMovingThere =
@@ -352,12 +345,11 @@ function createCombatSystem(): CombatSystem {
       const next = structuredClone(state) as GameState
 
       for (const unit of next.units) {
-        // Military units (spearman, archer, horseman) auto-engage enemies
         const isMilitary = unit.type !== 'villager'
 
+        // Tick down cooldown
         if (unit.attackCooldown > 0) {
           unit.attackCooldown = Math.max(0, unit.attackCooldown - dtSeconds)
-          if (!isMilitary) continue  // Villagers don't pursue
         }
 
         const enemies = next.units.filter((u) => u.ownerId !== unit.ownerId)
@@ -371,18 +363,18 @@ function createCombatSystem(): CombatSystem {
 
         if (!closest) continue
 
-        // Enemy in attack range - stay and attack
+        // Enemy in attack range — always attack regardless of movement state.
+        // A melee unit stuck behind allies will still swing at adjacent enemies.
         if (closestDist <= unit.range) {
-          // Stop moving, focus on attacking
-          if (unit.currentOrder.type === 'move') {
-            unit.currentOrder = { type: 'idle' }
-          }
-
           // Attack if cooldown is ready
           if (unit.attackCooldown === 0) {
             const dmg = Math.max(1, unit.attack - closest.armor)
             closest.hp -= dmg
             unit.attackCooldown = 1
+          }
+          // Military units stop to focus; villagers just swing while doing whatever
+          if (isMilitary && unit.currentOrder.type === 'move') {
+            unit.currentOrder = { type: 'idle' }
           }
         }
         // Enemy out of range but visible - pursue (military units only)
