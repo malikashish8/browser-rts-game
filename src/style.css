@@ -18,6 +18,7 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+
 a:hover {
   color: #535bf2;
 }
@@ -33,8 +34,12 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
+  touch-action: manipulation;
   overflow: hidden;
+}
+
+#game-container canvas {
+  touch-action: none;
 }
 
 #game-root {
@@ -130,7 +135,8 @@ body {
   cursor: pointer;
   margin-bottom: 0.3rem;
   transition: background 0.1s, border-color 0.1s;
-  min-height: 44px; /* Touch-friendly minimum */
+  min-height: 44px;
+  /* Touch-friendly minimum */
 }
 
 .hud-train-btn:hover:not(:disabled) {
@@ -144,7 +150,8 @@ body {
 }
 
 .train-icon {
-  display: none; /* Hidden on desktop */
+  display: none;
+  /* Hidden on desktop */
 }
 
 .train-name {
@@ -200,9 +207,11 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+
 button:hover {
   border-color: #646cff;
 }
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -235,6 +244,7 @@ button:focus-visible {
 
 /* Mobile: Even larger touch targets */
 @media (max-width: 768px) {
+
   #music-toggle,
   #sfx-toggle {
     width: 56px;
@@ -291,13 +301,9 @@ button:focus-visible {
 }
 
 /* Mobile responsive styles (landscape) */
-@media (max-width: 768px), (max-height: 500px) {
+@media (max-width: 768px),
+(max-height: 500px) {
   #hud-root {
-    position: fixed;
-    width: 100vw;
-    height: auto;
-    bottom: 0;
-    left: 0;
     padding: 0;
     border: none;
     background: transparent;
@@ -317,21 +323,19 @@ button:focus-visible {
   }
 
   #hud-main {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
     width: auto;
     padding: 0.5rem;
     display: flex;
     flex-direction: row;
+    justify-content: center;
     gap: 0.5rem;
     background: rgba(15, 23, 42, 0.95);
     border-radius: 12px 12px 0 0;
   }
 
   #selection-panel {
-    display: none; /* Hide on mobile */
+    display: none;
+    /* Hide on mobile */
   }
 
   #actions-panel {
@@ -345,7 +349,8 @@ button:focus-visible {
   }
 
   .hud-panel-header {
-    display: none; /* Hide headers on mobile */
+    display: none;
+    /* Hide headers on mobile */
   }
 
   .hud-resource-chip {
@@ -384,20 +389,15 @@ button:focus-visible {
   }
 
   .train-name {
-    display: none; /* Hide name on mobile */
+    display: none;
+    /* Hide name on mobile */
   }
 
   .train-cost {
-    position: absolute;
-    bottom: -1.5rem;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.65rem;
+    font-size: 0.55rem;
     white-space: nowrap;
     color: #94a3b8;
-    background: rgba(15, 23, 42, 0.9);
-    padding: 0.1rem 0.4rem;
-    border-radius: 4px;
+    line-height: 1;
   }
 }
 
@@ -406,9 +406,11 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
   }
