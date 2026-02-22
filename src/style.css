@@ -35,7 +35,7 @@ body {
   -webkit-user-select: none;
   user-select: none;
   touch-action: manipulation;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 #game-container canvas {
@@ -46,13 +46,16 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: 100dvh;
 }
 
 #game-container {
   flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   background: radial-gradient(circle at top, #1f2933 0, #020617 55%);
 }
 
