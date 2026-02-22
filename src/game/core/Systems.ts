@@ -60,84 +60,87 @@ function addResources(a: Resources, b: Resources, factor = 1): Resources {
 function createResourceSystem(): ResourceSystem {
   return {
     applyIncome(state: GameState, dtSeconds: number): GameState {
-      const hasVillager = state.units.some((u) => u.type === 'villager' && u.ownerId === 'player')
+      const hasVillager = state.units.some((u) => u.type === 'villager')
       if (!hasVillager) return state
 
       const next = structuredClone(state) as GameState
-      const player = next.players.find((p) => p.id === 'player')
-      if (!player) return state
 
-      for (const villager of next.units) {
-        if (villager.type !== 'villager' || villager.ownerId !== 'player') continue
+      // Process villagers for ALL players (player + AI)
+      for (const playerState of next.players) {
+        const playerId = playerState.id
 
-        // ── Auto-assign: if unassigned & idle near a node, start gathering it ──
-        if (!villager.resourceAssignment && villager.currentOrder.type === 'idle') {
-          for (const node of next.resourceNodes) {
-            if (node.amount <= 0) continue
-            const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
-            if (d <= GATHER_RANGE) {
-              villager.resourceAssignment = node.type
-              villager.gatherTargetNodeId = node.id
-              break
+        for (const villager of next.units) {
+          if (villager.type !== 'villager' || villager.ownerId !== playerId) continue
+
+          // ── Auto-assign: if unassigned & idle near a node, start gathering it ──
+          if (!villager.resourceAssignment && villager.currentOrder.type === 'idle') {
+            for (const node of next.resourceNodes) {
+              if (node.amount <= 0) continue
+              const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
+              if (d <= GATHER_RANGE) {
+                villager.resourceAssignment = node.type
+                villager.gatherTargetNodeId = node.id
+                break
+              }
             }
           }
-        }
 
-        // Auto-assign if stuck/blocked (has move order but VERY close to a resource)
-        if (!villager.resourceAssignment && villager.currentOrder.type === 'move') {
-          for (const node of next.resourceNodes) {
-            if (node.amount <= 0) continue
-            const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
-            if (d <= 40) {  // Only if extremely close (indicates blocked/stuck)
-              villager.resourceAssignment = node.type
-              villager.gatherTargetNodeId = node.id
-              break
+          // Auto-assign if stuck/blocked (has move order but VERY close to a resource)
+          if (!villager.resourceAssignment && villager.currentOrder.type === 'move') {
+            for (const node of next.resourceNodes) {
+              if (node.amount <= 0) continue
+              const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
+              if (d <= 40) {  // Only if extremely close (indicates blocked/stuck)
+                villager.resourceAssignment = node.type
+                villager.gatherTargetNodeId = node.id
+                break
+              }
             }
           }
-        }
 
-        if (!villager.resourceAssignment) continue
+          if (!villager.resourceAssignment) continue
 
-        const resType = villager.resourceAssignment
+          const resType = villager.resourceAssignment
 
-        // Prefer previously assigned node (stickiness), else pick nearest non-depleted match.
-        let targetNode = next.resourceNodes.find(
-          (n) => n.id === villager.gatherTargetNodeId && n.type === resType && n.amount > 0,
-        )
-        if (!targetNode) {
-          let minDist = Infinity
-          for (const n of next.resourceNodes) {
-            if (n.type !== resType || n.amount <= 0) continue
-            const d = Math.hypot(n.position.x - villager.position.x, n.position.y - villager.position.y)
-            if (d < minDist) { minDist = d; targetNode = n }
+          // Prefer previously assigned node (stickiness), else pick nearest non-depleted match.
+          let targetNode = next.resourceNodes.find(
+            (n) => n.id === villager.gatherTargetNodeId && n.type === resType && n.amount > 0,
+          )
+          if (!targetNode) {
+            let minDist = Infinity
+            for (const n of next.resourceNodes) {
+              if (n.type !== resType || n.amount <= 0) continue
+              const d = Math.hypot(n.position.x - villager.position.x, n.position.y - villager.position.y)
+              if (d < minDist) { minDist = d; targetNode = n }
+            }
           }
-        }
-        if (!targetNode) continue
+          if (!targetNode) continue
 
-        villager.gatherTargetNodeId = targetNode.id
+          villager.gatherTargetNodeId = targetNode.id
 
-        const dist = Math.hypot(
-          targetNode.position.x - villager.position.x,
-          targetNode.position.y - villager.position.y,
-        )
+          const dist = Math.hypot(
+            targetNode.position.x - villager.position.x,
+            targetNode.position.y - villager.position.y,
+          )
 
-        if (dist <= GATHER_RANGE) {
-          // At the node — gather.
-          const income = RESOURCE_INCOME_PER_VILLAGER[resType]
-          player.resources = addResources(player.resources, income, dtSeconds)
-          targetNode.amount = Math.max(0, targetNode.amount - (income.food + income.wood + income.gold) * dtSeconds)
-          villager.currentOrder = { type: 'idle' }
-        } else {
-          // Walk to the node if not already heading there.
-          const alreadyMovingThere =
-            villager.currentOrder.type === 'move' &&
-            villager.currentOrder.targetPosition != null &&
-            Math.hypot(
-              villager.currentOrder.targetPosition.x - targetNode.position.x,
-              villager.currentOrder.targetPosition.y - targetNode.position.y,
-            ) < 5
-          if (!alreadyMovingThere) {
-            villager.currentOrder = { type: 'move', targetPosition: { ...targetNode.position } }
+          if (dist <= GATHER_RANGE) {
+            // At the node — gather.
+            const income = RESOURCE_INCOME_PER_VILLAGER[resType]
+            playerState.resources = addResources(playerState.resources, income, dtSeconds)
+            targetNode.amount = Math.max(0, targetNode.amount - (income.food + income.wood + income.gold) * dtSeconds)
+            villager.currentOrder = { type: 'idle' }
+          } else {
+            // Walk to the node if not already heading there.
+            const alreadyMovingThere =
+              villager.currentOrder.type === 'move' &&
+              villager.currentOrder.targetPosition != null &&
+              Math.hypot(
+                villager.currentOrder.targetPosition.x - targetNode.position.x,
+                villager.currentOrder.targetPosition.y - targetNode.position.y,
+              ) < 5
+            if (!alreadyMovingThere) {
+              villager.currentOrder = { type: 'move', targetPosition: { ...targetNode.position } }
+            }
           }
         }
       }
