@@ -1,0 +1,30 @@
+{
+    "commands": [
+        "npm run dev",
+        "cmd /c npm run dev",
+        "cmd /c npm run dev 2>&1",
+        "npm run build",
+        "cmd /c npm run build",
+        "npx tsc --noEmit",
+        "cmd /c npx tsc --noEmit",
+        "cmd /c npx tsc --noEmit 2>&1",
+        "git add -A",
+        "cmd /c git add -A",
+        "git commit -m \"*\"",
+        "cmd /c git commit -m \"*\"",
+        "git push origin main",
+        "cmd /c git push origin main",
+        "git status",
+        "cmd /c git status",
+        "git log",
+        "cmd /c git log",
+        "git diff",
+        "cmd /c git diff",
+        "npm install",
+        "cmd /c npm install",
+        "npm run lint",
+        "cmd /c npm run lint",
+        "npm test",
+        "cmd /c npm test"
+    ]
+}

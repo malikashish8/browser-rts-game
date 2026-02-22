@@ -37,7 +37,8 @@ const RESOURCE_INCOME_PER_VILLAGER: Record<string, Resources> = {
 }
 
 /** Villager must be within this many pixels of a node to gather from it. */
-const GATHER_RANGE = 150
+/** Villager must be within this many pixels of a node to gather from it. */
+const GATHER_RANGE = 250
 
 function getUnitRadius(unit: Unit): number {
   switch (unit.type) {
@@ -72,14 +73,13 @@ function createResourceSystem(): ResourceSystem {
         for (const villager of next.units) {
           if (villager.type !== 'villager' || villager.ownerId !== playerId) continue
 
-          // ── Auto-assign: if unassigned AND idle near a resource node, start gathering.
-          //    Only idle villagers get auto-assigned so player-issued move orders
-          //    aren't overridden (issueMoveCommand clears resourceAssignment). ──
+          // ── Auto-assign: if unassigned AND idle near a resource node, start gathering. ──
           if (!villager.resourceAssignment && villager.currentOrder.type === 'idle') {
             for (const node of next.resourceNodes) {
               if (node.amount <= 0) continue
               const d = Math.hypot(node.position.x - villager.position.x, node.position.y - villager.position.y)
               if (d <= GATHER_RANGE) {
+                console.log(`[ResourceSystem] Auto-assigned villager ${villager.id} to ${node.type} (${node.id})`);
                 villager.resourceAssignment = node.type
                 villager.gatherTargetNodeId = node.id
                 break
@@ -118,7 +118,8 @@ function createResourceSystem(): ResourceSystem {
             const income = RESOURCE_INCOME_PER_VILLAGER[resType]
             playerState.resources = addResources(playerState.resources, income, dtSeconds)
             targetNode.amount = Math.max(0, targetNode.amount - (income.food + income.wood + income.gold) * dtSeconds)
-            // Stop moving if close enough to just gather
+
+            // If they were moving to this node, they can stop now that they are gathering
             if (villager.currentOrder.type === 'move') {
               villager.currentOrder = { type: 'idle' }
             }
@@ -244,7 +245,8 @@ function createMovementSystem(): MovementSystem {
         const dy = ty - unit.position.y
         const distance = Math.hypot(dx, dy)
 
-        if (distance < 1) {
+        // Arrived at destination (using 20px radius to be more forgiving of collisions)
+        if (distance < 20) {
           unit.position.x = tx
           unit.position.y = ty
           unit.currentOrder = { type: 'idle' }
@@ -277,6 +279,10 @@ function createMovementSystem(): MovementSystem {
         if (!blocked) {
           unit.position.x = nx
           unit.position.y = ny
+        } else if (distance < 10) {
+          // If blocked but very close to destination (e.g. boxed in by others already at destination),
+          // consider the unit as having "arrived" so it transitions to idle and can start gathering.
+          unit.currentOrder = { type: 'idle' }
         }
       }
 
