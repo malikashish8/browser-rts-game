@@ -125,7 +125,10 @@ export class InputHandler {
     let closestUnitId: string | null = null
     let closestDistance = Number.POSITIVE_INFINITY
 
+    // Only select player-owned units
     for (const unit of state.units) {
+      if (unit.ownerId !== 'player') continue
+
       const dx = unit.position.x - pointer.worldX
       const dy = unit.position.y - pointer.worldY
       const distance = Math.hypot(dx, dy)
@@ -158,7 +161,10 @@ export class InputHandler {
     const bottom = Math.max(y1, y2)
 
     const selected: string[] = []
+    // Only select player-owned units
     for (const unit of state.units) {
+      if (unit.ownerId !== 'player') continue
+
       if (
         unit.position.x >= left &&
         unit.position.x <= right &&

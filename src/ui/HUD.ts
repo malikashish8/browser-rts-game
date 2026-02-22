@@ -79,6 +79,28 @@ export class HUD {
       this.chip('🌲', Math.floor(wood)),
       this.chip('⛏', Math.floor(gold)),
     )
+
+    // DEV MODE: Show enemy resources
+    if (import.meta.env.DEV) {
+      const ai = state.players.find((p) => p.id === 'ai')
+      if (ai) {
+        const separator = document.createElement('div')
+        separator.style.cssText = 'width: 2px; height: 20px; background: rgba(148, 163, 184, 0.3); margin: 0 8px;'
+        container.appendChild(separator)
+
+        const aiLabel = document.createElement('span')
+        aiLabel.textContent = '🤖'
+        aiLabel.style.cssText = 'margin: 0 4px; opacity: 0.7;'
+        container.appendChild(aiLabel)
+
+        container.append(
+          this.chip('🌾', Math.floor(ai.resources.food)),
+          this.chip('🌲', Math.floor(ai.resources.wood)),
+          this.chip('⛏', Math.floor(ai.resources.gold)),
+        )
+      }
+    }
+
     this.resourceBar.appendChild(container)
   }
 

@@ -68,7 +68,7 @@ export function playArrowSound(): void {
   osc.frequency.setValueAtTime(800, now)
   osc.frequency.linearRampToValueAtTime(400, now + 0.12)
 
-  gain.gain.setValueAtTime(0.12, now)
+  gain.gain.setValueAtTime(0.15, now)
   gain.gain.linearRampToValueAtTime(0, now + 0.12)
 
   osc.connect(gain)
@@ -85,13 +85,13 @@ export function playSpearSound(): void {
 
   const now = ctx.currentTime
 
-  // Sawtooth hit
+  // Sawtooth hit - louder and punchier
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sawtooth'
-  osc.frequency.setValueAtTime(200, now)
-  osc.frequency.linearRampToValueAtTime(120, now + 0.08)
-  gain.gain.setValueAtTime(0.13, now)
+  osc.frequency.setValueAtTime(220, now)
+  osc.frequency.linearRampToValueAtTime(100, now + 0.08)
+  gain.gain.setValueAtTime(0.18, now)
   gain.gain.linearRampToValueAtTime(0, now + 0.08)
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -102,11 +102,11 @@ export function playSpearSound(): void {
   const bufferSize = ctx.sampleRate * 0.06
   const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
   const data = buffer.getChannelData(0)
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.3
+  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4
   const noise = ctx.createBufferSource()
   noise.buffer = buffer
   const noiseGain = ctx.createGain()
-  noiseGain.gain.setValueAtTime(0.08, now)
+  noiseGain.gain.setValueAtTime(0.12, now)
   noiseGain.gain.linearRampToValueAtTime(0, now + 0.06)
   noise.connect(noiseGain)
   noiseGain.connect(ctx.destination)
@@ -144,31 +144,31 @@ export function playLanceSound(): void {
 
   const now = ctx.currentTime
 
-  // Low sine thump
+  // Low sine thump - louder and deeper
   const osc1 = ctx.createOscillator()
   const gain1 = ctx.createGain()
   osc1.type = 'sine'
-  osc1.frequency.setValueAtTime(100, now)
-  osc1.frequency.linearRampToValueAtTime(50, now + 0.1)
-  gain1.gain.setValueAtTime(0.2, now)
-  gain1.gain.linearRampToValueAtTime(0, now + 0.1)
+  osc1.frequency.setValueAtTime(90, now)
+  osc1.frequency.linearRampToValueAtTime(40, now + 0.12)
+  gain1.gain.setValueAtTime(0.25, now)
+  gain1.gain.linearRampToValueAtTime(0, now + 0.12)
   osc1.connect(gain1)
   gain1.connect(ctx.destination)
   osc1.start(now)
-  osc1.stop(now + 0.11)
+  osc1.stop(now + 0.13)
 
-  // Mid square crunch
+  // Mid square crunch - more pronounced
   const osc2 = ctx.createOscillator()
   const gain2 = ctx.createGain()
   osc2.type = 'square'
-  osc2.frequency.setValueAtTime(300, now)
-  osc2.frequency.linearRampToValueAtTime(150, now + 0.07)
-  gain2.gain.setValueAtTime(0.08, now)
-  gain2.gain.linearRampToValueAtTime(0, now + 0.07)
+  osc2.frequency.setValueAtTime(350, now)
+  osc2.frequency.linearRampToValueAtTime(140, now + 0.08)
+  gain2.gain.setValueAtTime(0.12, now)
+  gain2.gain.linearRampToValueAtTime(0, now + 0.08)
   osc2.connect(gain2)
   gain2.connect(ctx.destination)
   osc2.start(now)
-  osc2.stop(now + 0.08)
+  osc2.stop(now + 0.09)
 }
 
 /** @deprecated Use the specific sound functions instead. */

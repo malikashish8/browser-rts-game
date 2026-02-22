@@ -24,6 +24,8 @@ export class GameClient {
   private readonly fogRenderer: FogOfWarRenderer
   private selectedUnitIds: string[] = []
   private nextUnitId = 1000
+  private readonly devMode = import.meta.env.DEV
+  private gameOver = false
 
   constructor(scene: Phaser.Scene) {
     this.state = createInitialGameState()
@@ -52,6 +54,27 @@ export class GameClient {
   init(): void {
     initMusic()
     initSfxToggle()
+
+    // Show dev mode indicator
+    if (this.devMode) {
+      const badge = document.createElement('div')
+      badge.textContent = 'DEV MODE'
+      badge.style.cssText = `
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        padding: 0.25rem 0.75rem;
+        background: rgba(239, 68, 68, 0.9);
+        color: white;
+        font-size: 0.75rem;
+        font-weight: 700;
+        border-radius: 4px;
+        z-index: 1000;
+        letter-spacing: 0.05em;
+      `
+      document.body.appendChild(badge)
+    }
+
     this.mapRenderer.init(this.state)
     this.state = this.systems.spawning.spawnInitialArmy(this.state)
     this.fogRenderer.sync(this.state)
@@ -61,12 +84,24 @@ export class GameClient {
   }
 
   update(_time: number, delta: number): void {
+    if (this.gameOver) return
+
     const dtSeconds = delta / 1000
     this.state = this.systems.updateAll(this.state, dtSeconds)
     this.input.update(dtSeconds)
     this.hud.render(this.state)
 
-    // Update fog of war (computes visibility grid).
+    // Check win/lose conditions
+    this.checkGameOver()
+
+    // DEV MODE: Show everything, no fog of war
+    if (this.devMode) {
+      this.resourceRenderer.sync(this.state)
+      this.unitRenderer.sync(this.state, delta, new Set(this.selectedUnitIds))
+      return
+    }
+
+    // PRODUCTION: Update fog of war and filter hidden entities
     this.fogRenderer.sync(this.state)
 
     // Filter state for renderers: hide enemies in fog, but always show resources.
@@ -140,5 +175,103 @@ export class GameClient {
           : unit,
       ),
     }
+  }
+
+  private checkGameOver(): void {
+    const playerUnits = this.state.units.filter((u) => u.ownerId === 'player').length
+    const aiUnits = this.state.units.filter((u) => u.ownerId === 'ai').length
+
+    if (playerUnits === 0) {
+      this.gameOver = true
+      this.showGameOver('DEFEAT', 'All your units have been destroyed!')
+    } else if (aiUnits === 0) {
+      this.gameOver = true
+      this.showGameOver('VICTORY', 'Enemy forces eliminated!')
+    }
+  }
+
+  private showGameOver(result: string, message: string): void {
+    const overlay = document.createElement('div')
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      animation: fadeIn 0.5s ease;
+    `
+
+    const title = document.createElement('h1')
+    title.textContent = result
+    title.style.cssText = `
+      font-size: 4rem;
+      font-weight: 900;
+      margin: 0 0 1rem 0;
+      color: ${result === 'VICTORY' ? '#4ade80' : '#ef4444'};
+      text-shadow: 0 0 20px ${result === 'VICTORY' ? 'rgba(74, 222, 128, 0.5)' : 'rgba(239, 68, 68, 0.5)'};
+      letter-spacing: 0.1em;
+    `
+
+    const msg = document.createElement('p')
+    msg.textContent = message
+    msg.style.cssText = `
+      font-size: 1.25rem;
+      color: #e5e7eb;
+      margin: 0 0 2rem 0;
+    `
+
+    const stats = document.createElement('div')
+    const finalTime = Math.floor(this.state.time)
+    const minutes = Math.floor(finalTime / 60)
+    const seconds = finalTime % 60
+    stats.innerHTML = `
+      <div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 2rem;">
+        Time: ${minutes}:${seconds.toString().padStart(2, '0')}
+      </div>
+    `
+
+    const restartBtn = document.createElement('button')
+    restartBtn.textContent = 'Play Again'
+    restartBtn.style.cssText = `
+      padding: 0.75rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      background: rgba(59, 130, 246, 0.9);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    `
+    restartBtn.onmouseover = () => {
+      restartBtn.style.background = 'rgba(59, 130, 246, 1)'
+      restartBtn.style.transform = 'scale(1.05)'
+    }
+    restartBtn.onmouseout = () => {
+      restartBtn.style.background = 'rgba(59, 130, 246, 0.9)'
+      restartBtn.style.transform = 'scale(1)'
+    }
+    restartBtn.onclick = () => {
+      window.location.reload()
+    }
+
+    overlay.append(title, msg, stats, restartBtn)
+    document.body.appendChild(overlay)
+
+    // Add fade-in animation
+    const style = document.createElement('style')
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+    `
+    document.head.appendChild(style)
   }
 }

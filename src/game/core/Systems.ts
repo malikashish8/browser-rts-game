@@ -5,7 +5,12 @@ export interface GameSystems {
   spawning: SpawningSystem
   movement: MovementSystem
   combat: CombatSystem
+  ai: AISystem
   updateAll: (state: GameState, dtSeconds: number) => GameState
+}
+
+export interface AISystem {
+  update(state: GameState, dtSeconds: number): GameState
 }
 
 export interface ResourceSystem {
@@ -198,13 +203,31 @@ function createSpawningSystem(): SpawningSystem {
         )
       }
 
-      // Enemy: soldiers LEFT (toward center), villagers would go RIGHT near their resources.
-      const enemySoldierX = next.world.width * 0.70     // ~896 px
-      for (let i = 0; i < 3; i++) {
-        next.units.push(spawnUnit('ai', 'spearman', { x: enemySoldierX - 30 + i * 30, y: midY - 20 }, (idSeed += 1)))
-      }
+      // Enemy: 6 villagers, 2 assigned to each resource (food, wood, gold)
+      const aiVillagerX = next.world.width * 0.90  // Near right edge resources
+
+      // 2 villagers at farm (food) - y: 120
       for (let i = 0; i < 2; i++) {
-        next.units.push(spawnUnit('ai', 'archer', { x: enemySoldierX - 20 + i * 40, y: midY + 20 }, (idSeed += 1)))
+        const villager = spawnUnit('ai', 'villager', { x: aiVillagerX + i * 20 - 10, y: 120 + i * 15 }, (idSeed += 1))
+        villager.resourceAssignment = 'food'
+        villager.gatherTargetNodeId = 'farm-R'
+        next.units.push(villager)
+      }
+
+      // 2 villagers at trees (wood) - y: 360
+      for (let i = 0; i < 2; i++) {
+        const villager = spawnUnit('ai', 'villager', { x: aiVillagerX + i * 20 - 10, y: 360 + i * 15 }, (idSeed += 1))
+        villager.resourceAssignment = 'wood'
+        villager.gatherTargetNodeId = 'tree-R'
+        next.units.push(villager)
+      }
+
+      // 2 villagers at mine (gold) - y: 600
+      for (let i = 0; i < 2; i++) {
+        const villager = spawnUnit('ai', 'villager', { x: aiVillagerX + i * 20 - 10, y: 600 + i * 15 }, (idSeed += 1))
+        villager.resourceAssignment = 'gold'
+        villager.gatherTargetNodeId = 'mine-R'
+        next.units.push(villager)
       }
 
       return next
@@ -266,15 +289,72 @@ function createMovementSystem(): MovementSystem {
   }
 }
 
+function createAISystem(): AISystem {
+  let nextUnitId = 5000
+  let spawnTimer = 0
+
+  return {
+    update(state: GameState, dtSeconds: number): GameState {
+      spawnTimer += dtSeconds
+      if (spawnTimer < 3) return state  // Spawn every 3 seconds
+
+      spawnTimer = 0
+      const next = structuredClone(state) as GameState
+      const ai = next.players.find((p) => p.id === 'ai')
+      if (!ai) return state
+
+      // Spawn priority: Spearmen > Archers > Horsemen
+      const { food, wood, gold } = ai.resources
+
+      // Try to spawn a unit based on available resources
+      let unitType: UnitType | null = null
+      let cost: Partial<Resources> = {}
+
+      if (food >= 50 && wood >= 30) {
+        // Spawn Spearman
+        unitType = 'spearman'
+        cost = { food: 50, wood: 30 }
+      } else if (food >= 35 && wood >= 45) {
+        // Spawn Archer
+        unitType = 'archer'
+        cost = { food: 35, wood: 45 }
+      } else if (food >= 70 && gold >= 40) {
+        // Spawn Horseman
+        unitType = 'horseman'
+        cost = { food: 70, gold: 40 }
+      }
+
+      if (!unitType) return state  // Not enough resources
+
+      // Deduct resources
+      ai.resources.food -= cost.food ?? 0
+      ai.resources.wood -= cost.wood ?? 0
+      ai.resources.gold -= cost.gold ?? 0
+
+      // Spawn near center-right
+      const spawnX = next.world.width * 0.70
+      const spawnY = next.world.height * 0.5 + (Math.random() - 0.5) * 60
+
+      const newUnit = spawnUnit('ai', unitType, { x: spawnX, y: spawnY }, (nextUnitId += 1))
+      next.units.push(newUnit)
+
+      return next
+    },
+  }
+}
+
 function createCombatSystem(): CombatSystem {
   return {
     update(state: GameState, dtSeconds: number): GameState {
       const next = structuredClone(state) as GameState
 
       for (const unit of next.units) {
+        // Military units (spearman, archer, horseman) auto-engage enemies
+        const isMilitary = unit.type !== 'villager'
+
         if (unit.attackCooldown > 0) {
           unit.attackCooldown = Math.max(0, unit.attackCooldown - dtSeconds)
-          continue
+          if (!isMilitary) continue  // Villagers don't pursue
         }
 
         const enemies = next.units.filter((u) => u.ownerId !== unit.ownerId)
@@ -288,10 +368,27 @@ function createCombatSystem(): CombatSystem {
 
         if (!closest) continue
 
-        if (closestDist <= unit.range) {
+        // Attack if in range
+        if (closestDist <= unit.range && unit.attackCooldown === 0) {
           const dmg = Math.max(1, unit.attack - closest.armor)
           closest.hp -= dmg
           unit.attackCooldown = 1
+        }
+        // Military units pursue enemies within sight range
+        else if (isMilitary && closestDist <= unit.sightRange) {
+          // Only move if idle or not already moving to this enemy
+          const shouldPursue =
+            unit.currentOrder.type === 'idle' ||
+            (unit.currentOrder.type === 'move' &&
+             unit.currentOrder.targetPosition &&
+             Math.hypot(
+               unit.currentOrder.targetPosition.x - closest.position.x,
+               unit.currentOrder.targetPosition.y - closest.position.y
+             ) > 20)  // Update target if enemy moved significantly
+
+          if (shouldPursue) {
+            unit.currentOrder = { type: 'move', targetPosition: { ...closest.position } }
+          }
         }
       }
 
@@ -306,15 +403,18 @@ export function createSystems(): GameSystems {
   const spawning = createSpawningSystem()
   const movement = createMovementSystem()
   const combat = createCombatSystem()
+  const ai = createAISystem()
 
   return {
     resource,
     spawning,
     movement,
     combat,
+    ai,
     updateAll(state: GameState, dtSeconds: number): GameState {
       let next = { ...state, time: state.time + dtSeconds }
       next = resource.applyIncome(next, dtSeconds)
+      next = ai.update(next, dtSeconds)
       next = movement.update(next, dtSeconds)
       next = combat.update(next, dtSeconds)
       return next

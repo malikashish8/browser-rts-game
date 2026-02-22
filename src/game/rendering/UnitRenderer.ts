@@ -21,6 +21,7 @@ interface UnitView {
   lastX: number
   lastY: number
   lastState: UnitVisualState
+  lastAttackCooldown: number
 }
 
 /** A flying arrow projectile (visual only). */
@@ -171,7 +172,7 @@ export class UnitRenderer {
     return { container, body, baseBodyColor: col, unitType: 'villager',
       ownerId: unit.ownerId, weaponParts: [handle, blade], hpBar, selectionRing,
       statusGfx: zzz,
-      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle' }
+      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle', lastAttackCooldown: 0 }
   }
 
   // ─── Spearman ──────────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ export class UnitRenderer {
 
     return { container, body, baseBodyColor: col, unitType: 'spearman',
       ownerId: unit.ownerId, weaponParts: [spear, tip], hpBar, selectionRing,
-      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle' }
+      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle', lastAttackCooldown: 0 }
   }
 
   // ─── Archer ────────────────────────────────────────────────────────────────
@@ -247,7 +248,7 @@ export class UnitRenderer {
 
     return { container, body, baseBodyColor: col, unitType: 'archer',
       ownerId: unit.ownerId, weaponParts: [nocked, bowstring], hpBar, selectionRing,
-      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle' }
+      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle', lastAttackCooldown: 0 }
   }
 
   // ─── Horseman ──────────────────────────────────────────────────────────────
@@ -293,7 +294,7 @@ export class UnitRenderer {
 
     return { container, body, baseBodyColor: riderCol, unitType: 'horseman',
       ownerId: unit.ownerId, weaponParts: [lance, lanceTip], hpBar, selectionRing,
-      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle' }
+      lastX: unit.position.x, lastY: unit.position.y, lastState: 'idle', lastAttackCooldown: 0 }
   }
 
   // ─── Per-frame update ─────────────────────────────────────────────────────
@@ -371,7 +372,8 @@ export class UnitRenderer {
       }
     }
 
-    if (visualState === 'attacking' && view.lastState !== 'attacking') {
+    // Play attack sound on each attack cycle (when cooldown resets from 0 to 1)
+    if (unit.attackCooldown > 0.9 && view.lastAttackCooldown < 0.1) {
       switch (view.unitType) {
         case 'spearman': playSpearSound();  break
         case 'horseman': playLanceSound();  break
@@ -383,6 +385,7 @@ export class UnitRenderer {
     view.selectionRing.setVisible(selected)
     this.updateHpBar(unit, view)
     view.lastState = visualState
+    view.lastAttackCooldown = unit.attackCooldown
   }
 
   // ── Attack animations ─────────────────────────────────────────────────────
