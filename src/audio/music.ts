@@ -8,7 +8,7 @@ let container: HTMLDivElement | null = null
 export function initMusic(): void {
   audio = new Audio('music/background.mp3')
   audio.loop = true
-  audio.volume = 0.35
+  audio.volume = 0.175
 
   // Hard fallback: some browsers silently ignore the loop attribute on
   // longer MP3s. Restarting manually on 'ended' guarantees the loop.
