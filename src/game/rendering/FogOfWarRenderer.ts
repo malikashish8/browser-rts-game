@@ -7,14 +7,12 @@ const EXPLORED   = 1
 const VISIBLE    = 2
 
 export class FogOfWarRenderer {
-  private readonly scene: Phaser.Scene
   private readonly gfx: Phaser.GameObjects.Graphics
   private readonly cols: number
   private readonly rows: number
   private readonly grid: Uint8Array
 
   constructor(scene: Phaser.Scene, worldWidth: number, worldHeight: number) {
-    this.scene = scene
     this.cols = Math.ceil(worldWidth / CELL)
     this.rows = Math.ceil(worldHeight / CELL)
     this.grid = new Uint8Array(this.cols * this.rows) // all UNEXPLORED (0)

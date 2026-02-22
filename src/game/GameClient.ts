@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { createInitialGameState } from './core/GameState.ts'
-import type { GameState, UnitType, Vec2 } from './core/GameState.ts'
+import type { GameState, ResourceType, UnitType, Vec2 } from './core/GameState.ts'
 import { UNIT_COSTS } from './core/GameState.ts'
 import { createSystems, spawnUnit } from './core/Systems.ts'
 import type { GameSystems } from './core/Systems.ts'
