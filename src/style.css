@@ -306,6 +306,16 @@ button:focus-visible {
 /* Mobile responsive styles (landscape) */
 @media (max-width: 768px),
 (max-height: 500px) {
+  #game-root {
+    height: auto;
+  }
+
+  #game-container {
+    flex: none;
+    min-height: auto;
+    overflow: visible;
+  }
+
   #hud-root {
     padding: 0;
     border: none;
@@ -326,6 +336,10 @@ button:focus-visible {
   }
 
   #hud-main {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
     width: auto;
     padding: 0.5rem;
     display: flex;
@@ -334,6 +348,7 @@ button:focus-visible {
     gap: 0.5rem;
     background: rgba(15, 23, 42, 0.95);
     border-radius: 12px 12px 0 0;
+    z-index: 100;
   }
 
   #selection-panel {
