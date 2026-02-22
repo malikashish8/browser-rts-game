@@ -44,7 +44,9 @@ export class InputHandler {
 
   private registerMouseBindings(): void {
     this.scene.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.leftButtonDown()) {
+      // Mobile: Always start with selection drag
+      // Desktop: Left-click for selection, right-click for move
+      if (pointer.leftButtonDown() || pointer.isDown) {
         this.beginDrag(pointer)
       } else if (pointer.rightButtonDown()) {
         this.handleRightClick(pointer)
@@ -57,7 +59,7 @@ export class InputHandler {
     })
 
     this.scene.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
-      if (pointer.leftButtonReleased() && this.isDragging) {
+      if (this.isDragging) {
         this.finishDrag(pointer)
       }
     })
@@ -89,12 +91,49 @@ export class InputHandler {
 
     this.isDragging = false
 
-    // Treat very small drags as a simple click selection.
-    const clickThreshold = 6
+    // Treat very small drags as a simple tap/click
+    const clickThreshold = 10  // Slightly larger for touch
     if (dragDistance < clickThreshold) {
-      this.handleClickSelection(pointer)
+      this.handleTap(pointer)
     } else {
       this.handleBoxSelection(pointer)
+    }
+  }
+
+  private handleTap(pointer: Phaser.Input.Pointer): void {
+    const state = this.getState()
+    const pickRadius = 24  // Larger for touch-friendly selection
+
+    // Check if tapping on a unit
+    let tappedUnitId: string | null = null
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    for (const unit of state.units) {
+      if (unit.ownerId !== 'player') continue
+
+      const dx = unit.position.x - pointer.worldX
+      const dy = unit.position.y - pointer.worldY
+      const distance = Math.hypot(dx, dy)
+      if (distance < pickRadius && distance < closestDistance) {
+        closestDistance = distance
+        tappedUnitId = unit.id
+      }
+    }
+
+    // If tapped on unit: select it
+    if (tappedUnitId) {
+      this.selectedUnitIds = [tappedUnitId]
+      this.callbacks.setSelection(this.selectedUnitIds)
+    }
+    // If tapped on empty space with units selected: move them
+    else if (this.selectedUnitIds.length > 0) {
+      const destination = { x: pointer.worldX, y: pointer.worldY }
+      this.callbacks.issueMove(destination)
+    }
+    // If tapped on empty space with nothing selected: deselect
+    else {
+      this.selectedUnitIds = []
+      this.callbacks.setSelection(this.selectedUnitIds)
     }
   }
 

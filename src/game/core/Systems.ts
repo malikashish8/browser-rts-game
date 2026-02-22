@@ -368,15 +368,23 @@ function createCombatSystem(): CombatSystem {
 
         if (!closest) continue
 
-        // Attack if in range
-        if (closestDist <= unit.range && unit.attackCooldown === 0) {
-          const dmg = Math.max(1, unit.attack - closest.armor)
-          closest.hp -= dmg
-          unit.attackCooldown = 1
+        // Enemy in attack range - stay and attack
+        if (closestDist <= unit.range) {
+          // Stop moving, focus on attacking
+          if (unit.currentOrder.type === 'move') {
+            unit.currentOrder = { type: 'idle' }
+          }
+
+          // Attack if cooldown is ready
+          if (unit.attackCooldown === 0) {
+            const dmg = Math.max(1, unit.attack - closest.armor)
+            closest.hp -= dmg
+            unit.attackCooldown = 1
+          }
         }
-        // Military units pursue enemies within sight range
+        // Enemy out of range but visible - pursue (military units only)
         else if (isMilitary && closestDist <= unit.sightRange) {
-          // Only move if idle or not already moving to this enemy
+          // Only update move order if not already moving toward this enemy
           const shouldPursue =
             unit.currentOrder.type === 'idle' ||
             (unit.currentOrder.type === 'move' &&
