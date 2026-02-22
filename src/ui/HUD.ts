@@ -28,6 +28,13 @@ const UNIT_LABELS: Record<UnitType, string> = {
   horseman: 'Horseman',
 }
 
+const UNIT_ICONS: Record<UnitType, string> = {
+  villager: '👷',
+  spearman: '🗡️',
+  archer:   '🏹',
+  horseman: '🐎',
+}
+
 export class HUD {
   private readonly getState: StateProvider
   private readonly getSelectedUnitIds: SelectionProvider
@@ -216,6 +223,11 @@ export class HUD {
       btn.className = 'hud-train-btn'
       btn.dataset.trainType = type
 
+      const iconEl = document.createElement('span')
+      iconEl.className = 'train-icon'
+      iconEl.textContent = UNIT_ICONS[type]
+      iconEl.style.fontSize = '2rem'
+
       const nameEl = document.createElement('span')
       nameEl.className = 'train-name'
       nameEl.textContent = UNIT_LABELS[type]
@@ -224,6 +236,7 @@ export class HUD {
       costEl.className = 'train-cost'
       costEl.textContent = costStr
 
+      btn.appendChild(iconEl)
       btn.appendChild(nameEl)
       btn.appendChild(costEl)
       btn.addEventListener('click', (e) => {

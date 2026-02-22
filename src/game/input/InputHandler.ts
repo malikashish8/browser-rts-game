@@ -157,35 +157,6 @@ export class InputHandler {
     this.dragGraphics.fillRect(left, top, width, height)
   }
 
-  private handleClickSelection(pointer: Phaser.Input.Pointer): void {
-    const state = this.getState()
-    const pickRadius = 18
-
-    let closestUnitId: string | null = null
-    let closestDistance = Number.POSITIVE_INFINITY
-
-    // Only select player-owned units
-    for (const unit of state.units) {
-      if (unit.ownerId !== 'player') continue
-
-      const dx = unit.position.x - pointer.worldX
-      const dy = unit.position.y - pointer.worldY
-      const distance = Math.hypot(dx, dy)
-      if (distance < pickRadius && distance < closestDistance) {
-        closestDistance = distance
-        closestUnitId = unit.id
-      }
-    }
-
-    if (closestUnitId) {
-      this.selectedUnitIds = [closestUnitId]
-    } else {
-      this.selectedUnitIds = []
-    }
-
-    this.callbacks.setSelection(this.selectedUnitIds)
-  }
-
   private handleBoxSelection(pointer: Phaser.Input.Pointer): void {
     const state = this.getState()
 

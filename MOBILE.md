@@ -1,6 +1,10 @@
 # Mobile Controls Guide
 
-The game now supports **full touch controls** for mobile devices!
+The game now supports **full touch controls** with a **mobile-optimized UI**!
+
+## 📐 Landscape Mode Required
+
+The game **automatically requires landscape orientation** on mobile devices for the best experience. If you see a rotation prompt, please rotate your device horizontally.
 
 ## 📱 Touch Controls
 
@@ -12,11 +16,26 @@ The game now supports **full touch controls** for mobile devices!
 - **Select units, then tap ground** → Move selected units to that location
 
 ### Training Units:
-- **Tap buttons** in the Actions panel to train units
+- **Tap unit icons** at the bottom of screen
+- 👷 = Villager, 🗡️ = Spearman, 🏹 = Archer, 🐎 = Horseman
+- Cost shown below each icon
 
 ### Sound Controls:
 - **Tap 🎵 icon** → Toggle music
 - **Tap 🔊 icon** → Toggle sound effects
+
+## 📱 Mobile UI Layout
+
+### Simplified Interface:
+- **Top:** Resources (food, wood, gold)
+- **Center:** Game view (full-screen)
+- **Bottom:** Unit training icons (icon-only buttons)
+- **Top-right:** Sound controls (🎵 music, 🔊 SFX)
+
+### Icon-Only Training:
+- Large touch-friendly icons (64×64px)
+- Cost displayed below each icon
+- Visual feedback when unaffordable
 
 ## 🎮 How It Works
 
