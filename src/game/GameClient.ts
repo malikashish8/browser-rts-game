@@ -166,12 +166,12 @@ export class GameClient {
       units: this.state.units.map((unit) =>
         selectedIds.has(unit.id)
           ? {
-              ...unit,
-              currentOrder: { type: 'move', targetPosition: { ...destination } },
-              // Clear gather state so the villager can auto-assign at the new destination.
-              resourceAssignment: unit.type === 'villager' ? null : unit.resourceAssignment,
-              gatherTargetNodeId: unit.type === 'villager' ? null : unit.gatherTargetNodeId,
-            }
+            ...unit,
+            currentOrder: { type: 'move', targetPosition: { ...destination } },
+            // Clear gather state so the villager can auto-assign at the new destination.
+            resourceAssignment: unit.type === 'villager' ? null : unit.resourceAssignment,
+            gatherTargetNodeId: unit.type === 'villager' ? null : unit.gatherTargetNodeId,
+          }
           : unit,
       ),
     }

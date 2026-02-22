@@ -24,14 +24,14 @@ const INCOME_RATE: Record<ResourceType, number> = {
 const UNIT_LABELS: Record<UnitType, string> = {
   villager: 'Villager',
   spearman: 'Spearman',
-  archer:   'Archer',
+  archer: 'Archer',
   horseman: 'Horseman',
 }
 
 const UNIT_ICONS: Record<UnitType, string> = {
   villager: '👷',
   spearman: '🗡️',
-  archer:   '🏹',
+  archer: '🏹',
   horseman: '🐎',
 }
 
@@ -53,8 +53,8 @@ export class HUD {
     this.getSelectedUnitIds = getSelectedUnitIds
     this.actions = actions
 
-    this.resourceBar  = document.getElementById('resource-bar')
-    this.workerPanel  = document.getElementById('selection-panel')
+    this.resourceBar = document.getElementById('resource-bar')
+    this.workerPanel = document.getElementById('selection-panel')
     this.recruitPanel = document.getElementById('actions-panel')
 
     this.buildRecruitPanel()

@@ -43,9 +43,9 @@ function getUnitRadius(unit: Unit): number {
   switch (unit.type) {
     case 'horseman': return 14
     case 'spearman':
-    case 'archer':   return 9
+    case 'archer': return 9
     case 'villager':
-    default:         return 8
+    default: return 8
   }
 }
 
@@ -154,10 +154,10 @@ const BASE_STATS: Record<
   UnitType,
   { hp: number; attack: number; armor: number; range: number; speed: number; sightRange: number }
 > = {
-  villager: { hp: 40,  attack: 2,  armor: 0, range: 10,  speed: 80,  sightRange: 100 },
-  spearman: { hp: 60,  attack: 8,  armor: 1, range: 18,  speed: 70,  sightRange: 120 },
-  archer:   { hp: 40,  attack: 7,  armor: 0, range: 120, speed: 75,  sightRange: 150 },
-  horseman: { hp: 80,  attack: 10, armor: 1, range: 24,  speed: 110, sightRange: 140 },
+  villager: { hp: 40, attack: 2, armor: 0, range: 10, speed: 80, sightRange: 100 },
+  spearman: { hp: 60, attack: 8, armor: 1, range: 18, speed: 70, sightRange: 120 },
+  archer: { hp: 40, attack: 7, armor: 0, range: 120, speed: 75, sightRange: 150 },
+  horseman: { hp: 80, attack: 10, armor: 1, range: 24, speed: 110, sightRange: 140 },
 }
 
 /** Creates a new unit with sensible defaults. Exported so GameClient can use it. */
@@ -388,11 +388,11 @@ function createCombatSystem(): CombatSystem {
           const shouldPursue =
             unit.currentOrder.type === 'idle' ||
             (unit.currentOrder.type === 'move' &&
-             unit.currentOrder.targetPosition &&
-             Math.hypot(
-               unit.currentOrder.targetPosition.x - closest.position.x,
-               unit.currentOrder.targetPosition.y - closest.position.y
-             ) > 20)  // Update target if enemy moved significantly
+              unit.currentOrder.targetPosition &&
+              Math.hypot(
+                unit.currentOrder.targetPosition.x - closest.position.x,
+                unit.currentOrder.targetPosition.y - closest.position.y
+              ) > 20)  // Update target if enemy moved significantly
 
           if (shouldPursue) {
             unit.currentOrder = { type: 'move', targetPosition: { ...closest.position } }
