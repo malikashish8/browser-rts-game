@@ -221,6 +221,14 @@ button:focus-visible {
   transition: background 0.2s, border-color 0.2s, color 0.2s;
 }
 
+#music-toggle {
+  border-color: rgba(167, 139, 250, 0.4);
+}
+
+#sfx-toggle {
+  border-color: rgba(96, 165, 250, 0.4);
+}
+
 #music-toggle:hover,
 #sfx-toggle:hover {
   background: rgba(30, 41, 59, 0.95);
