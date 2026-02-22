@@ -37,8 +37,8 @@ const RESOURCE_INCOME_PER_VILLAGER: Record<string, Resources> = {
 }
 
 /** Villager must be within this many pixels of a node to gather from it. */
-/** Villager must be within this many pixels of a node to gather from it. */
-const GATHER_RANGE = 250
+const GATHER_RANGE = 125
+
 
 function getUnitRadius(unit: Unit): number {
   switch (unit.type) {
@@ -247,8 +247,6 @@ function createMovementSystem(): MovementSystem {
 
         // Arrived at destination (using 20px radius to be more forgiving of collisions)
         if (distance < 20) {
-          unit.position.x = tx
-          unit.position.y = ty
           unit.currentOrder = { type: 'idle' }
           continue
         }
@@ -426,6 +424,44 @@ export function createSystems(): GameSystems {
       next = ai.update(next, dtSeconds)
       next = movement.update(next, dtSeconds)
       next = combat.update(next, dtSeconds)
+
+      // Apply separation pass to keep units from overlapping ('over casting')
+      const units = next.units
+      for (let i = 0; i < units.length; i++) {
+        const u1 = units[i]
+        const r1 = getUnitRadius(u1)
+        for (let j = i + 1; j < units.length; j++) {
+          const u2 = units[j]
+          const r2 = getUnitRadius(u2)
+          let dx = u2.position.x - u1.position.x
+          let dy = u2.position.y - u1.position.y
+          let dist = Math.hypot(dx, dy)
+
+          // Desired distance to keep them visually distinct (radius + buffer)
+          const minDist = r1 + r2 + 12
+
+          if (dist < minDist) {
+            // Solve perfect overlaps with a small random nudge
+            if (dist < 0.1) {
+              const angle = Math.random() * Math.PI * 2
+              dx = Math.cos(angle)
+              dy = Math.sin(angle)
+              dist = 1
+            }
+
+            const overlap = minDist - dist
+            const force = overlap * 0.5
+            const pushX = (dx / dist) * force
+            const pushY = (dy / dist) * force
+
+            u1.position.x -= pushX
+            u1.position.y -= pushY
+            u2.position.x += pushX
+            u2.position.y += pushY
+          }
+        }
+      }
+
       return next
     },
   }
