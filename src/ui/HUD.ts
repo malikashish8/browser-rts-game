@@ -1,104 +1,231 @@
-import type { GameState } from '../game/core/GameState.ts'
+import type { GameState, ResourceType, UnitType } from '../game/core/GameState.ts'
+import { UNIT_COSTS } from '../game/core/GameState.ts'
 
 type StateProvider = () => GameState
 type SelectionProvider = () => string[]
 
-/**
- * Simple DOM-based HUD for v1.
- *
- * - Resource bar shows player food / wood / gold.
- * - Selection and actions panels are placeholders for now.
- */
+export interface HUDActions {
+  trainUnit: (type: UnitType) => void
+}
+
+const RESOURCE_ICON: Record<ResourceType, string> = {
+  food: '🌾',
+  wood: '🌲',
+  gold: '⛏',
+}
+
+/** Income per second per villager (must match Systems.ts values). */
+const INCOME_RATE: Record<ResourceType, number> = {
+  food: 0.8,
+  wood: 0.7,
+  gold: 0.5,
+}
+
+const UNIT_LABELS: Record<UnitType, string> = {
+  villager: 'Villager',
+  spearman: 'Spearman',
+  archer:   'Archer',
+  horseman: 'Horseman',
+}
+
 export class HUD {
   private readonly getState: StateProvider
   private readonly getSelectedUnitIds: SelectionProvider
-  private readonly resourceBar: HTMLElement | null
-  private readonly selectionPanel: HTMLElement | null
-  private readonly actionsPanel: HTMLElement | null
+  private readonly actions: HUDActions
 
-  constructor(getState: StateProvider, getSelectedUnitIds: SelectionProvider) {
+  private readonly resourceBar: HTMLElement | null
+  private readonly workerPanel: HTMLElement | null
+  private readonly recruitPanel: HTMLElement | null
+
+  constructor(
+    getState: StateProvider,
+    getSelectedUnitIds: SelectionProvider,
+    actions: HUDActions,
+  ) {
     this.getState = getState
     this.getSelectedUnitIds = getSelectedUnitIds
-    this.resourceBar = document.getElementById('resource-bar')
-    this.selectionPanel = document.getElementById('selection-panel')
-    this.actionsPanel = document.getElementById('actions-panel')
+    this.actions = actions
+
+    this.resourceBar  = document.getElementById('resource-bar')
+    this.workerPanel  = document.getElementById('selection-panel')
+    this.recruitPanel = document.getElementById('actions-panel')
+
+    this.buildRecruitPanel()
   }
 
   render(state: GameState): void {
-    // Touch the state provider so TypeScript recognises it as used – the
-    // current render API passes state explicitly, but we keep the provider
-    // for future use (e.g. internal polling or event-based updates).
     void this.getState
+    void this.getSelectedUnitIds
 
     this.renderResources(state)
-    this.renderSelection(state)
-    this.renderActions(state)
+    this.renderWorkers(state)
+    this.updateRecruitAffordability(state)
   }
+
+  // ─── Resource bar ──────────────────────────────────────────────────────────
 
   private renderResources(state: GameState): void {
     if (!this.resourceBar) return
-
     const player = state.players.find((p) => p.id === 'player')
     if (!player) return
 
     const { food, wood, gold } = player.resources
-
     this.resourceBar.textContent = ''
 
     const container = document.createElement('div')
     container.className = 'hud-resource-container'
-
     container.append(
-      this.createResourceChip('Food', Math.floor(food)),
-      this.createResourceChip('Wood', Math.floor(wood)),
-      this.createResourceChip('Gold', Math.floor(gold)),
+      this.chip('🌾', Math.floor(food)),
+      this.chip('🌲', Math.floor(wood)),
+      this.chip('⛏', Math.floor(gold)),
     )
-
     this.resourceBar.appendChild(container)
   }
 
-  private createResourceChip(label: string, value: number): HTMLElement {
-    const chip = document.createElement('div')
-    chip.className = 'hud-resource-chip'
-    chip.textContent = `${label}: ${value}`
-    return chip
+  private chip(icon: string, value: number): HTMLElement {
+    const el = document.createElement('div')
+    el.className = 'hud-resource-chip'
+    el.textContent = `${icon} ${value}`
+    return el
   }
 
-  private renderSelection(state: GameState): void {
-    if (!this.selectionPanel) return
+  // ─── Worker summary panel ──────────────────────────────────────────────────
 
-    const selectedIds = this.getSelectedUnitIds()
+  private renderWorkers(state: GameState): void {
+    if (!this.workerPanel) return
 
-    if (selectedIds.length === 0) {
-      this.selectionPanel.textContent = 'No selection'
+    const villagers = state.units.filter(
+      (u) => u.type === 'villager' && u.ownerId === 'player',
+    )
+
+    // Count villagers per assignment.
+    const counts: Record<ResourceType | 'idle', number> = { food: 0, wood: 0, gold: 0, idle: 0 }
+    for (const v of villagers) {
+      if (v.resourceAssignment) counts[v.resourceAssignment]++
+      else counts.idle++
+    }
+
+    this.workerPanel.innerHTML = ''
+
+    const header = document.createElement('div')
+    header.className = 'hud-panel-header'
+    header.textContent = `Villagers (${villagers.length})`
+    this.workerPanel.appendChild(header)
+
+    if (villagers.length === 0) {
+      const msg = document.createElement('div')
+      msg.className = 'hud-empty-msg'
+      msg.textContent = 'No villagers'
+      this.workerPanel.appendChild(msg)
       return
     }
 
-    const selectedUnits = state.units.filter((u) => selectedIds.includes(u.id))
+    const list = document.createElement('div')
+    list.className = 'hud-gather-list'
 
-    if (selectedUnits.length === 0) {
-      this.selectionPanel.textContent = 'No selection'
-      return
+    const resTypes: ResourceType[] = ['food', 'wood', 'gold']
+    for (const res of resTypes) {
+      const count = counts[res]
+      const rate = +(count * INCOME_RATE[res]).toFixed(1)
+
+      const row = document.createElement('div')
+      row.className = 'hud-gather-row'
+
+      const icon = document.createElement('span')
+      icon.className = 'hud-gather-icon'
+      icon.textContent = RESOURCE_ICON[res]
+
+      const countEl = document.createElement('span')
+      countEl.className = 'hud-gather-count'
+      countEl.textContent = `${count}`
+
+      const rateEl = document.createElement('span')
+      rateEl.className = count > 0 ? 'hud-gather-rate active' : 'hud-gather-rate'
+      rateEl.textContent = `+${rate}/s`
+
+      row.append(icon, countEl, rateEl)
+      list.appendChild(row)
     }
 
-    const byType: Record<string, number> = {}
-    for (const unit of selectedUnits) {
-      byType[unit.type] = (byType[unit.type] ?? 0) + 1
+    // Idle row
+    if (counts.idle > 0) {
+      const row = document.createElement('div')
+      row.className = 'hud-gather-row idle'
+
+      const icon = document.createElement('span')
+      icon.className = 'hud-gather-icon'
+      icon.textContent = '💤'
+
+      const countEl = document.createElement('span')
+      countEl.className = 'hud-gather-count'
+      countEl.textContent = `${counts.idle}`
+
+      const rateEl = document.createElement('span')
+      rateEl.className = 'hud-gather-rate'
+      rateEl.textContent = 'idle'
+
+      row.append(icon, countEl, rateEl)
+      list.appendChild(row)
     }
 
-    const summary = Object.entries(byType)
-      .map(([type, count]) => `${count}× ${type}`)
-      .join(' | ')
-
-    this.selectionPanel.textContent = summary
+    this.workerPanel.appendChild(list)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private renderActions(_state: GameState): void {
-    if (!this.actionsPanel) return
-    if (!this.actionsPanel.textContent) {
-      this.actionsPanel.textContent = 'No actions'
+  // ─── Recruit panel ─────────────────────────────────────────────────────────
+
+  private buildRecruitPanel(): void {
+    if (!this.recruitPanel) return
+    this.recruitPanel.innerHTML = ''
+
+    const header = document.createElement('div')
+    header.className = 'hud-panel-header'
+    header.textContent = 'Train Units'
+    this.recruitPanel.appendChild(header)
+
+    const unitTypes: UnitType[] = ['villager', 'spearman', 'archer', 'horseman']
+
+    for (const type of unitTypes) {
+      const costs = UNIT_COSTS[type]
+      const costStr = (Object.entries(costs) as Array<[ResourceType, number]>)
+        .map(([res, amt]) => `${RESOURCE_ICON[res]}${amt}`)
+        .join(' ')
+
+      const btn = document.createElement('button')
+      btn.className = 'hud-train-btn'
+      btn.dataset.trainType = type
+
+      const nameEl = document.createElement('span')
+      nameEl.className = 'train-name'
+      nameEl.textContent = UNIT_LABELS[type]
+
+      const costEl = document.createElement('span')
+      costEl.className = 'train-cost'
+      costEl.textContent = costStr
+
+      btn.appendChild(nameEl)
+      btn.appendChild(costEl)
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        this.actions.trainUnit(type)
+      })
+
+      this.recruitPanel.appendChild(btn)
+    }
+  }
+
+  private updateRecruitAffordability(state: GameState): void {
+    if (!this.recruitPanel) return
+    const player = state.players.find((p) => p.id === 'player')
+    if (!player) return
+
+    for (const btn of this.recruitPanel.querySelectorAll<HTMLButtonElement>('[data-train-type]')) {
+      const type = btn.dataset.trainType as UnitType
+      const costs = UNIT_COSTS[type]
+      const canAfford = (Object.entries(costs) as Array<[ResourceType, number]>).every(
+        ([res, amt]) => player.resources[res] >= amt,
+      )
+      btn.disabled = !canAfford
+      btn.classList.toggle('unaffordable', !canAfford)
     }
   }
 }
-
