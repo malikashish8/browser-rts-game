@@ -312,8 +312,13 @@ export class UnitRenderer {
 
     // Reset each frame.
     view.container.setAngle(0)
+    view.container.setPosition(unit.position.x, unit.position.y)
     view.body.setFillStyle(view.baseBodyColor)
-    view.weaponParts.forEach((w, i) => { w.setAngle(0); w.setPosition(...this.defaultWeaponPos(view.unitType, w, i)) })
+    view.weaponParts.forEach((w, i) => {
+      w.setAngle(0)
+      w.setScale(1, 1)
+      w.setPosition(...this.defaultWeaponPos(view.unitType, w, i))
+    })
 
     // Hide Zzz by default each frame (villager sleeping will re-show it below).
     if (view.statusGfx) view.statusGfx.setVisible(false)
@@ -397,11 +402,19 @@ export class UnitRenderer {
     const dy = enemy.position.y - unit.position.y
     const angle = Math.atan2(dy, dx) * (180 / Math.PI)
 
-    // Lean container toward the enemy so the spear points that way.
-    view.container.setAngle(Phaser.Math.Clamp(angle * 0.25, -35, 35))
-    // Thrust: tip the spear shaft forward.
+    // Thrust animation: just rotate the weapon more aggressively during attack
     const [spear, tip] = view.weaponParts
-    const thrust = Phaser.Math.Clamp(angle * 0.5, -60, 60)
+    let thrust = Phaser.Math.Clamp(angle * 0.5, -60, 60)
+
+    // During attack, add extra forward rotation for thrust effect
+    if (unit.attackCooldown > 0.7) {
+      const thrustPower = (unit.attackCooldown - 0.7) / 0.3
+      thrust += thrustPower * 20  // Extra 20 degree forward rotation
+      view.container.setAngle(Phaser.Math.Clamp(angle * 0.4, -45, 45))
+    } else {
+      view.container.setAngle(Phaser.Math.Clamp(angle * 0.25, -35, 35))
+    }
+
     spear?.setAngle(thrust)
     tip?.setAngle(thrust)
   }
@@ -413,11 +426,24 @@ export class UnitRenderer {
     const dy = enemy.position.y - unit.position.y
     const angle = Math.atan2(dy, dx) * (180 / Math.PI)
 
-    // Point lance in the direction of the enemy (clamped to avoid
-    // flipping it completely if enemy is behind).
-    const lanceAngle = Phaser.Math.Clamp(angle, -35, 35)
+    // Point lance in the direction of the enemy
+    let lanceAngle = Phaser.Math.Clamp(angle, -35, 35)
+    let bodyLean = Phaser.Math.Clamp(angle * 0.1, -12, 12)
+
+    // During attack: lunge with more aggressive angle and body lean
+    if (unit.attackCooldown > 0.7) {
+      const lungePower = (unit.attackCooldown - 0.7) / 0.3
+      lanceAngle += lungePower * 15  // Point lance more forward
+      bodyLean = Phaser.Math.Clamp(angle * 0.3, -25, 25)  // Lean body into charge
+
+      // Make lance appear to extend slightly
+      for (const w of view.weaponParts) {
+        w.setScale(1 + lungePower * 0.3, 1)  // Stretch horizontally
+      }
+    }
+
     for (const w of view.weaponParts) w.setAngle(lanceAngle)
-    view.container.setAngle(Phaser.Math.Clamp(angle * 0.1, -12, 12))
+    view.container.setAngle(bodyLean)
   }
 
   // ── Weapon position reset helpers ────────────────────────────────────────

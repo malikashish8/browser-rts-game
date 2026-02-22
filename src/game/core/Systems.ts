@@ -303,28 +303,28 @@ function createAISystem(): AISystem {
       const ai = next.players.find((p) => p.id === 'ai')
       if (!ai) return state
 
-      // Spawn priority: Spearmen > Archers > Horsemen
+      // Random unit selection from affordable options
       const { food, wood, gold } = ai.resources
 
-      // Try to spawn a unit based on available resources
-      let unitType: UnitType | null = null
-      let cost: Partial<Resources> = {}
+      // Check which units are affordable
+      const affordable: Array<{ type: UnitType; cost: Partial<Resources> }> = []
 
       if (food >= 50 && wood >= 30) {
-        // Spawn Spearman
-        unitType = 'spearman'
-        cost = { food: 50, wood: 30 }
-      } else if (food >= 35 && wood >= 45) {
-        // Spawn Archer
-        unitType = 'archer'
-        cost = { food: 35, wood: 45 }
-      } else if (food >= 70 && gold >= 40) {
-        // Spawn Horseman
-        unitType = 'horseman'
-        cost = { food: 70, gold: 40 }
+        affordable.push({ type: 'spearman', cost: { food: 50, wood: 30 } })
+      }
+      if (food >= 35 && wood >= 45) {
+        affordable.push({ type: 'archer', cost: { food: 35, wood: 45 } })
+      }
+      if (food >= 70 && gold >= 40) {
+        affordable.push({ type: 'horseman', cost: { food: 70, gold: 40 } })
       }
 
-      if (!unitType) return state  // Not enough resources
+      if (affordable.length === 0) return state  // Not enough resources
+
+      // Randomly pick one of the affordable units
+      const choice = affordable[Math.floor(Math.random() * affordable.length)]
+      const unitType = choice.type
+      const cost = choice.cost
 
       // Deduct resources
       ai.resources.food -= cost.food ?? 0
