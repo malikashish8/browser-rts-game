@@ -6,7 +6,7 @@ let button: HTMLButtonElement | null = null
 let container: HTMLDivElement | null = null
 
 export function initMusic(): void {
-  audio = new Audio('/music/background.mp3')
+  audio = new Audio('music/background.mp3')
   audio.loop = true
   audio.volume = 0.35
 
@@ -15,7 +15,7 @@ export function initMusic(): void {
   audio.addEventListener('ended', () => {
     if (!muted && audio) {
       audio.currentTime = 0
-      audio.play().catch(() => {})
+      audio.play().catch(() => { })
     }
   })
 
