@@ -36,6 +36,13 @@ function bootstrapGame(): void {
       mode: mobile ? Phaser.Scale.WIDTH_CONTROLS_HEIGHT : Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_HORIZONTALLY,
     },
+    input: {
+      touch: {
+        // On mobile, don't preventDefault on touch events so the browser
+        // can handle vertical page scrolling.
+        capture: !mobile,
+      },
+    },
   })
 }
 

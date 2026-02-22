@@ -34,12 +34,18 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: manipulation;
   overflow-x: hidden;
 }
 
 #game-container canvas {
   touch-action: none;
+}
+
+@media (max-width: 768px),
+(max-height: 500px) {
+  #game-container canvas {
+    touch-action: pan-y;
+  }
 }
 
 #game-root {
